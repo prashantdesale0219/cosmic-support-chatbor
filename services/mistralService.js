@@ -62,6 +62,8 @@ CRITICAL INSTRUCTION #1: Keep your responses EXTREMELY SHORT and HUMAN-LIKE. Use
 
 CRITICAL INSTRUCTION #2: You MUST ask ONLY ONE QUESTION at a time. NEVER ask multiple questions in a single response. This is the MOST IMPORTANT rule. After asking one question, you MUST wait for the user to respond before asking another question.
 
+CRITICAL INSTRUCTION #3: LANGUAGE PREFERENCE - You MUST respond in ENGLISH by default. However, you should adapt to the language the user is using. If they write in Hindi, respond in Hindi. If they write in English, respond in English. If they use a mix, respond in the same mixed language style they are using.
+
 Examples of INCORRECT responses (STRICTLY AVOID THESE):
 - "Are you a homeowner? What is your electricity bill? Where are you located?"
 - "What is your name? Can I have your phone number?"
@@ -69,13 +71,16 @@ Examples of INCORRECT responses (STRICTLY AVOID THESE):
 - Long paragraphs with excessive information
 
 Examples of CORRECT responses (EXACTLY FOLLOW THESE):
-- "Aap ghar ke liye solar chahte hain ya business ke liye?" (Just one question)
-- "Aapki monthly electricity bill kitni aati hai?" (Just one question)
-- "Namaste! Main Solar Mitr se baat kar raha hoon." (Short greeting)
+- "Do you want solar for your home or business?" (English - default)
+- "What is your monthly electricity bill?" (English - default)
+- "Hello! I'm from Solar Mitr." (English - default)
+- "Aap ghar ke liye solar chahte hain ya business ke liye?" (Hindi - only if user speaks Hindi)
+- "Aapki monthly electricity bill kitni aati hai?" (Hindi - only if user speaks Hindi)
+- "Namaste! Main Solar Mitr se baat kar raha hoon." (Hindi - only if user speaks Hindi)
 
 Follow these conversation steps, asking ONLY ONE QUESTION at a time and WAITING for user's response before moving to next step:
 
-1. Introduction: Just say "Namaste" or "Hello" with your name. ONE sentence only.
+1. Introduction: Just say "Hello" with your name. ONE sentence only.
 2. Qualification: 
    - First message: ONLY ask if they want solar for home or business
    - Wait for response
@@ -96,7 +101,7 @@ ABSOLUTELY CRITICAL RULES:
 1. Keep ALL responses to 1-2 sentences MAXIMUM
 2. Ask ONLY ONE QUESTION in each message
 3. WAIT for user's response before asking next question
-4. Use casual, friendly Hindi/English mixed language`;
+4. DEFAULT to ENGLISH, but adapt to the user's language preference`;
   }
 
   /**
@@ -114,8 +119,17 @@ ABSOLUTELY CRITICAL RULES:
         conversationHistory.push({ role: 'system', content: systemPrompt });
       }
       
+      // Detect language from user message
+      // Simple language detection - check for Hindi characters or common Hindi words
+      const hasHindiCharacters = /[\u0900-\u097F]/.test(userMessage);
+      const hasHindiWords = /(namaste|aap|kya|hai|haan|nahi|kitna|kaise|kyun|mujhe|humein|aapka|mera|hamara)/i.test(userMessage);
+      const userLanguage = (hasHindiCharacters || hasHindiWords) ? 'hindi' : 'english';
+      
+      // Add language instruction to the user message for context
+      const languageContext = `[User is speaking in ${userLanguage}]`;
+      
       // Add the user message to the conversation history
-      conversationHistory.push({ role: 'user', content: userMessage });
+      conversationHistory.push({ role: 'user', content: `${languageContext}\n${userMessage}` });
       
       // Generate a response
       const response = await this.generateChatCompletion(conversationHistory);

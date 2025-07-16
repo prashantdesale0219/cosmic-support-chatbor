@@ -4,6 +4,7 @@ const configService = require('./configService');
 class ChatService {
   constructor() {
     this.conversations = new Map();
+    this.defaultLanguage = 'english';
   }
 
   /**
@@ -21,6 +22,11 @@ class ChatService {
       let conversationHistory = [];
       if (conversationId && this.conversations.has(conversationId)) {
         conversationHistory = this.conversations.get(conversationId);
+      }
+      
+      // Set default language to English if it's a new conversation
+      if (conversationHistory.length === 0) {
+        this.defaultLanguage = 'english';
       }
       
       // Process the message using Mistral service
@@ -44,6 +50,22 @@ class ChatService {
       };
     } catch (error) {
       console.error('Error processing chat message:', error);
+      
+      // Enhance error with additional context if it doesn't already have it
+      if (!error.code) {
+        error.code = 'CHAT_PROCESSING_ERROR';
+      }
+      
+      if (!error.userFriendlyMessage) {
+        error.userFriendlyMessage = 'Sorry, I encountered an issue while processing your message. Please try again later.';
+      }
+      
+      // Log detailed error information for debugging
+      console.error('Detailed error information:');
+      console.error(`- Error code: ${error.code}`);
+      console.error(`- Error message: ${error.message}`);
+      console.error(`- User friendly message: ${error.userFriendlyMessage}`);
+      
       throw error;
     }
   }

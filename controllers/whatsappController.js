@@ -108,15 +108,34 @@ exports.handleMessage = async (req, res) => {
     // Generate a conversation ID based on the sender's phone number
     const conversationId = `whatsapp_${from}`;
     
-    // Process the message using the chat service
-    console.log(`🔄 Processing message with conversation ID: ${conversationId}`);
-    const response = await chatService.processMessage(text, conversationId);
-    console.log(`✅ Got response from chatService: ${response.message}`);
-    
-    // Send the response back to the user via WhatsApp
-    console.log(`📤 Sending response to ${from}`);
-    await sendWhatsAppMessage(from, response.message);
-    console.log(`📬 Response sent successfully to ${from}`);
+    try {
+      // Process the message using the chat service
+      console.log(`🔄 Processing message with conversation ID: ${conversationId}`);
+      const response = await chatService.processMessage(text, conversationId);
+      console.log(`✅ Got response from chatService: ${response.message}`);
+      
+      // Send the response back to the user via WhatsApp
+      console.log(`📤 Sending response to ${from}`);
+      await sendWhatsAppMessage(from, response.message);
+      console.log(`📬 Response sent successfully to ${from}`);
+    } catch (error) {
+      console.error('❌ Error processing or sending message:', error);
+      
+      // Send a user-friendly error message back to the user
+      let errorMessage = 'Sorry, I encountered an issue while processing your message. Please try again later.';
+      
+      // Use the user-friendly message if available
+      if (error.userFriendlyMessage) {
+        errorMessage = error.userFriendlyMessage;
+      }
+      
+      try {
+        await sendWhatsAppMessage(from, errorMessage);
+        console.log(`📬 Error message sent to ${from}`);
+      } catch (sendError) {
+        console.error('❌ Failed to send error message to user:', sendError);
+      }
+    }
   } catch (error) {
     console.error('❌ Error in handleMessage controller:', error);
   }

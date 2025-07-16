@@ -24,9 +24,27 @@ exports.processMessage = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in processMessage controller:', error);
-    return res.status(500).json({
+    
+    // Determine the appropriate status code based on the error
+    let statusCode = 500;
+    let errorMessage = 'Error processing message';
+    
+    // Check for specific error codes from WhatsApp service
+    if (error.code === 'ENV_VAR_MISSING') {
+      statusCode = 503; // Service Unavailable
+      errorMessage = 'WhatsApp service configuration error';
+    } else if (error.code === 'TOKEN_EXPIRED') {
+      statusCode = 401; // Unauthorized
+      errorMessage = 'WhatsApp authentication error';
+    } else if (error.code === 'API_ERROR') {
+      statusCode = 502; // Bad Gateway
+      errorMessage = 'WhatsApp API error';
+    }
+    
+    return res.status(statusCode).json({
       success: false,
-      message: 'Error processing message',
+      message: errorMessage,
+      userFriendlyMessage: error.userFriendlyMessage || 'An error occurred while processing your message. Please try again later.',
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }

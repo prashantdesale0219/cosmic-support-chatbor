@@ -7,6 +7,16 @@ class WhatsAppService {
     console.log('🔄 Initializing WhatsAppService...');
     this.phoneNumberId = process.env.PHONE_NUMBER_ID;
     this.accessToken = process.env.META_ACCESS_TOKEN;
+    
+    // Check if required environment variables are set
+    if (!this.phoneNumberId) {
+      console.error('❌ ERROR: PHONE_NUMBER_ID environment variable is not set');
+    }
+    
+    if (!this.accessToken) {
+      console.error('❌ ERROR: META_ACCESS_TOKEN environment variable is not set');
+    }
+    
     this.baseUrl = `https://graph.facebook.com/v19.0/${this.phoneNumberId}/messages`;
     console.log(`🔄 WhatsApp API URL configured as: ${this.baseUrl}`);
     console.log(`🔄 Using Phone Number ID: ${this.phoneNumberId}`);
@@ -71,6 +81,20 @@ class WhatsAppService {
     try {
       console.log(`🔄 Preparing WhatsApp API request to ${to}`);
       console.log(`📝 Message content: ${message}`);
+      
+      // Check if required environment variables are set
+      if (!this.phoneNumberId) {
+        const error = new Error('PHONE_NUMBER_ID environment variable is not set. Please check your .env file.');
+        error.code = 'ENV_VAR_MISSING';
+        throw error;
+      }
+      
+      if (!this.accessToken) {
+        const error = new Error('META_ACCESS_TOKEN environment variable is not set. Please check your .env file.');
+        error.code = 'ENV_VAR_MISSING';
+        throw error;
+      }
+      
       console.log(`🔍 DEBUG: Current phoneNumberId: ${this.phoneNumberId}`);
       console.log(`🔍 DEBUG: Current accessToken length: ${this.accessToken ? this.accessToken.length : 'undefined'}`);
       
@@ -104,12 +128,17 @@ class WhatsAppService {
         Authorization: `Bearer ${this.accessToken}`,
         'Content-Type': 'application/json'
       };
-      console.log(`🔍 DEBUG: Authorization header starts with: Bearer ${this.accessToken.substring(0, 10)}...`);
+      
+      // Safely log part of the token for debugging
+      if (this.accessToken && this.accessToken.length > 10) {
+        console.log(`🔍 DEBUG: Authorization header starts with: Bearer ${this.accessToken.substring(0, 10)}...`);
+      } else {
+        console.log(`⚠️ WARNING: Access token appears to be invalid or too short`);
+      }
       
       console.log('📤 Sending request to WhatsApp API...');
       try {
         console.log(`🔍 DEBUG: Making axios.post call to URL: ${url}`);
-        console.log(`🔍 DEBUG: With headers: ${JSON.stringify(headers)}`);
         console.log(`🔍 DEBUG: With payload: ${JSON.stringify(payload)}`);
         
         const response = await axios.post(url, payload, { headers });
@@ -132,11 +161,16 @@ class WhatsAppService {
           // Update the .env file with a comment about the expired token
           await this.updateEnvFileWithTokenComment();
           
-          throw new Error('Meta access token has expired. Please update the META_ACCESS_TOKEN in your .env file.');
+          const error = new Error('Meta access token has expired. Please update the META_ACCESS_TOKEN in your .env file.');
+          error.code = 'TOKEN_EXPIRED';
+          throw error;
         }
         
         // For other API errors
-        throw apiError;
+        const error = new Error(`WhatsApp API error: ${apiError.message}`);
+        error.code = 'API_ERROR';
+        error.originalError = apiError;
+        throw error;
       }
     } catch (error) {
       console.error('❌ Error sending WhatsApp message:');
@@ -145,7 +179,22 @@ class WhatsAppService {
         console.error(`❌ Response data: ${JSON.stringify(error.response.data)}`);
       } else {
         console.error(`❌ Error message: ${error.message}`);
+        console.error(`❌ Error code: ${error.code || 'UNKNOWN'}`);
       }
+      
+      // Add a more descriptive error message for frontend display
+      if (!error.userFriendlyMessage) {
+        if (error.code === 'ENV_VAR_MISSING') {
+          error.userFriendlyMessage = 'Configuration error: WhatsApp API credentials are missing. Please contact the administrator.';
+        } else if (error.code === 'TOKEN_EXPIRED') {
+          error.userFriendlyMessage = 'Authentication error: WhatsApp API token has expired. Please contact the administrator.';
+        } else if (error.code === 'API_ERROR') {
+          error.userFriendlyMessage = 'WhatsApp API error: Unable to send message. Please try again later.';
+        } else {
+          error.userFriendlyMessage = 'An error occurred while sending the message. Please try again later.';
+        }
+      }
+      
       throw error;
     }
   }
